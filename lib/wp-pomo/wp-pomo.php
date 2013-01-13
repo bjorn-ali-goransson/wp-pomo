@@ -56,7 +56,7 @@ add_action('admin_menu', function(){
               </script>
             <?php
           } else if(isset($_REQUEST["scan_theme"]) && $_REQUEST["scan_theme"] == "1"){
-            if($_REQUEST["locale"] != ""){
+            if(isset($_REQUEST["locale"]) && $_REQUEST["locale"] != ""){
               scan_theme_files();
               generate_po_files($_REQUEST["locale"]);
               ?>
@@ -352,7 +352,7 @@ function scan_theme_files_store_results($string, $domain, $file, $line){
   $domains[$domain] = $domain; // loopable and unique!
 }
 
-function scan_theme_files($dir, $first_run = true){
+function scan_theme_files($dir = false, $first_run = true){
   if($first_run){
     global $rows, $domains;
     require "lib/potx.php";

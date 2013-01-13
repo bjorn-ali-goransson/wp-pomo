@@ -31,7 +31,7 @@ add_action('admin_menu', function(){
               $po_string = $_REQUEST["po_strings"][$i];
               $po_translation = $_REQUEST["po_translations"][$i];
               
-              $content_as_po = 'msgid "' . $po_string . '"' . PHP_EOL;
+              $content_as_po = 'msgid "' . addcslashes(stripslashes($po_string), "\0..\37\\\"") . '"' . PHP_EOL;
               
               $found = false;
               
@@ -280,15 +280,14 @@ function generate_po_files($locale = false){
 function merge_po_content($po_rows, $rows){
   // update existing rows
   foreach($rows as $row){
-    $content_as_po = 'msgid "' . addslashes($row['string']) . '"' . PHP_EOL;
+    $content_as_po = $row['msgid'] . PHP_EOL;
     
     for($i = 0; $i < count($po_rows); $i++){
       if($po_rows[$i] == $content_as_po){
         // update string position
-        
         $string_positions = get_po_string_position($row);
         
-        $first_half_of_po_rows = array_slice($po_rows, 0, $i - 3); // (exclude existent string positions and content_as_po)
+        $first_half_of_po_rows = array_slice($po_rows, 0, $i - 2); // (exclude existent string positions and content_as_po)
         $second_half_of_po_rows = array_slice($po_rows, $i); // (include content_as_po and translation)
         
         $po_rows = array_merge($first_half_of_po_rows, $string_positions, $second_half_of_po_rows);
@@ -310,7 +309,7 @@ function merge_po_content($po_rows, $rows){
     $found = false;
     
     foreach($rows as $row){
-      $content_as_po = 'msgid "' . addslashes($row['string']) . '"' . PHP_EOL;
+      $content_as_po = $row['msgid'] . PHP_EOL;
       
       if($po_rows[$i] == $content_as_po){
         $found = true;
@@ -319,7 +318,7 @@ function merge_po_content($po_rows, $rows){
     }
     
     if(!$found){
-      $first_half_of_po_rows = array_slice($po_rows, 0, $i - 3); // (exclude existent string positions and content_as_po)
+      $first_half_of_po_rows = array_slice($po_rows, 0, $i - 2); // (exclude existent string positions and content_as_po)
       $second_half_of_po_rows = array_slice($po_rows, $i + 3); // (exclude content_as_po and translation and the empty newline after them)
       
       $po_rows = array_merge($first_half_of_po_rows, $second_half_of_po_rows);
@@ -328,12 +327,14 @@ function merge_po_content($po_rows, $rows){
       unset($second_half_of_po_rows);
       
       $i = 0;
+      
+      // TODO: look for filename:linenumber also
     }
   }
   
   // add new rows
   foreach($rows as $row){
-    $content_as_po = 'msgid "' . addslashes($row['string']) . '"' . PHP_EOL;
+    $content_as_po = $row['msgid'] . PHP_EOL;
     
     $found = false;
     
@@ -346,7 +347,6 @@ function merge_po_content($po_rows, $rows){
     
     if(!$found){
       // update string position
-      
       $po_rows = array_merge($po_rows, generate_po_entry($row));
     }
   }
@@ -361,7 +361,8 @@ function scan_theme_files_store_results($string, $domain, $file, $line){
     $domain = "theme-localization";
   }
   
-  $rows[] = array("string" => stripslashes($string), "domain" => $domain, "file" => $file, "line" => $line);
+  $rows[] = array("string" => $string, "domain" => $domain, "file" => $file, "line" => $line, "msgid" => 'msgid "' . $string . '"');
+  
   $domains[$domain] = $domain; // loopable and unique!
 }
 
@@ -424,22 +425,18 @@ function generate_po_entry($row){
   
   $po_entry[] = $string_positions[0];
   $po_entry[] = $string_positions[1];
-  $po_entry[] = $string_positions[2];
   
-  $po_entry[] = 'msgid "' . addslashes($row['string']) . '"' . PHP_EOL;
+  $po_entry[] = $row["msgid"] . PHP_EOL;
   $po_entry[] = 'msgstr ""' . PHP_EOL;
   
   return $po_entry;
 }
 
 function get_po_string_position($row){
-  $file = @file($row["file"]);
-  
   $string_positions = array();
   
-  $string_positions[] = '# ' . @trim($file[$row["line"]-2]) . PHP_EOL;
-  $string_positions[] = '# ' . @trim($file[$row["line"]-1]) . PHP_EOL;
-  $string_positions[] = '# ' . @trim($file[$row["line"]]) . PHP_EOL;
+  $string_positions[] = '#: ' . $row["file"] . ":" . $row["line"] . PHP_EOL;
+  $string_positions[] = '#, ' . PHP_EOL;
   
   return $string_positions;
 }

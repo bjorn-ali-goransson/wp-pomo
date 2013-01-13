@@ -21,7 +21,7 @@ add_action('admin_menu', function(){
         <div id="icon-tools" class="icon32"><br></div>
         <h2>Translate your theme</h2>
         <?php
-          if($_REQUEST["save_translation"] == "1"){
+          if(isset($_REQUEST["save_translation"]) && $_REQUEST["save_translation"] == "1"){
             $file = $_REQUEST["file"];
             $po_rows = file($lang_dir . $file);
             
@@ -55,9 +55,10 @@ add_action('admin_menu', function(){
                 location.href = document.getElementById("view-strings").href;
               </script>
             <?php
-          } else if($_REQUEST["scan_theme"] == "1"){
+          } else if(isset($_REQUEST["scan_theme"]) && $_REQUEST["scan_theme"] == "1"){
             if($_REQUEST["locale"] != ""){
-              scan_theme_files($_REQUEST["locale"]);
+              scan_theme_files();
+              generate_po_files($_REQUEST["locale"]);
               ?>
                 <p>Scanning was successful! <?php if(count($domains) > 1) { echo count($domains) ?> translation files (from different "domains") were created. <?php } ?>.</p>
                 <p><a href="tools.php?page=translate-your-theme" class="button-primary" id="view-strings">View strings</a></p>
@@ -67,6 +68,7 @@ add_action('admin_menu', function(){
               <?php
             } else {
               scan_theme_files();
+              generate_po_files();
               ?>
                 <p>Scanning was successful!</p>
                 <p><a href="tools.php?page=translate-your-theme" class="button-primary" id="view-strings">View strings</a></p>
@@ -79,7 +81,7 @@ add_action('admin_menu', function(){
             $files = get_po_files();
             
             if(count($files) > 0){
-              $chosen_file = $_REQUEST["file"];
+              $chosen_file = isset($_REQUEST["file"]) ? $_REQUEST["file"] : "";
               
               if($chosen_file == ""){
                 $chosen_file = $files[0];
@@ -186,8 +188,18 @@ function get_po_files(){
   while(false !== ($file = readdir($dh))){
     if($file=="." || $file=="..") continue;
     
-    if(!is_dir($lang_dir . "/" . $file) && preg_match('#(\.po)$#i', $file)){
-      $files[]= $file;
+    if(is_dir($lang_dir . "/" . $file)){
+      $dir = $file;
+      
+      $ddh = opendir($lang_dir . "/" . $dir);
+      
+      while(false !== ($file = readdir($ddh))){
+        if(preg_match('#\.po$#i', $file)){
+          $files[] = $dir . "/" . $file;
+        }
+      }
+      
+      closedir($ddh);
     }
   }
   
@@ -234,7 +246,11 @@ function generate_po_files($locale = false){
   
   foreach($locales as $locale){
     foreach($domains as $domain){
-      $filename = $domain . "-" . $locale . ".po";
+      if(!is_dir($lang_dir . "/" . $domain)){
+        mkdir($lang_dir . $domain);
+      }
+      
+      $filename = $domain . "/" . $locale . ".po";
       
       if(!is_file($lang_dir . $filename)){
         $po = generate_po_file($rows, $domain);
@@ -336,8 +352,8 @@ function scan_theme_files_store_results($string, $domain, $file, $line){
   $domains[$domain] = $domain; // loopable and unique!
 }
 
-function scan_theme_files($dir = false, $first_run = true){
-  if(!$dir){
+function scan_theme_files($dir, $first_run = true){
+  if($first_run){
     global $rows, $domains;
     require "lib/potx.php";
     
@@ -353,16 +369,12 @@ function scan_theme_files($dir = false, $first_run = true){
     
     if(is_dir($dir . "/" . $file)){
       scan_theme_files($dir . "/" . $file, false);
-    }elseif(preg_match('#(\.php|\.inc)$#i', $file)){
+    }elseif(preg_match('#\.php$#i', $file)){
       _potx_process_file($dir . "/" . $file, 0, 'scan_theme_files_store_results', '_potx_save_version', POTX_API_7);
     }
   }
   
   closedir($dh);
-  
-  if($first_run){
-    generate_po_files();
-  }
 }
 
 function generate_po_file($rows, $domain){

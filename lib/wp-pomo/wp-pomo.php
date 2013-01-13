@@ -3,7 +3,14 @@
  * License: GPL v3 http://www.opensource.org/licenses/gpl-3.0.html
  */
 
-$lang_dir = dirname(__FILE__) . "/../../lang/";
+$lang_dir = dirname(__FILE__) . "/../../languages/";
+
+if(!is_dir($lang_dir)){
+  mkdir($lang_dir);
+}
+if(!is_dir($lang_dir)){
+  wp_die("Could not create directory \"languages\" in theme directory.");
+}
 
 add_action('admin_menu', function(){
 	add_management_page("Translate your theme", "Translate your theme", "manage_options", "translate-your-theme", function(){

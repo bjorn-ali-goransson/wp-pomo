@@ -21,7 +21,9 @@ add_action('admin_menu', function(){
         <div id="icon-tools" class="icon32"><br></div>
         <h2>Translate your theme</h2>
         <?php
-          if(isset($_REQUEST["save_translation"]) && $_REQUEST["save_translation"] == "1"){
+          $files = get_po_files();
+          
+          if(count($files) > 0 && isset($_REQUEST["save_translation"]) && $_REQUEST["save_translation"] == "1"){
             $file = $_REQUEST["file"];
             $po_rows = file($lang_dir . $file);
             
@@ -31,14 +33,20 @@ add_action('admin_menu', function(){
               
               $content_as_po = 'msgid "' . $po_string . '"' . PHP_EOL;
               
+              $found = false;
+              
+              // update string translation
               for($j = 0; $j < count($po_rows); $j++){
                 if($po_rows[$j] == $content_as_po){
-                  // update string translation
-                  
                   $po_rows[$j + 1] = 'msgstr "' . $po_translation . '"' . PHP_EOL;
+                  $found = true;
                   
                   break;
                 }
+              }
+              
+              if(!$found){
+                die("Couldn't update translation of \"$po_string\"; somehow, I didn't manage to find the key in the .po file.");
               }
             }
             
@@ -78,12 +86,18 @@ add_action('admin_menu', function(){
               <?php
             }
           } else {
-            $files = get_po_files();
-            
             if(count($files) > 0){
               $chosen_file = isset($_REQUEST["file"]) ? $_REQUEST["file"] : "";
               
-              if($chosen_file == ""){
+              $found = false;
+              
+              foreach($files as $file){
+                if($chosen_file == $file){
+                  $found = true;
+                }
+              }
+              
+              if($chosen_file == "" || !$found){
                 $chosen_file = $files[0];
               }
               
@@ -92,10 +106,9 @@ add_action('admin_menu', function(){
               if(count($files) > 1){
                 ?>
                   <p>
-                    <form method="get" action="tools.php">
+                    <form method="get" action="tools.php" id="switch-working-file">
                       <input type="hidden" name="page" value="translate-your-theme" />
-                      <input type="hidden" name="scan_theme" value="1" />
-                      <select name="file" id="selected-file-for-viewing">
+                      <select name="file" id="selected-file-for-viewing" onchange="document.getElementById('switch-working-file').submit();">
                         <?php foreach($files as $file){ ?>
                           <option <?php if($chosen_file == $file) echo "selected=\"selected\"" ?>><?php echo $file ?></option>
                         <?php } ?>
@@ -136,18 +149,18 @@ add_action('admin_menu', function(){
                           }
                           
                           $po_string = substr($po_file_rows[$i], strlen("msgid \""), strlen($po_file_rows[$i]) - strlen("msgid \"") - 3);
-                          $po_string = str_replace('\"', '"', $po_string);
+                          $po_string = stripslashes($po_string);
                           
                           $po_translation = substr($po_file_rows[$i + 1], strlen("msgstr \""), strlen($po_file_rows[$i + 1]) - strlen("msgstr \"") - 3);
-                          $po_translation = str_replace('\"', '"', $po_translation);
+                          $po_translation = stripslashes($po_translation);
                           
                           ?>
                             <tr>
                               <td>
-                                <input type="text" name="po_strings[]" value="<?php echo htmlspecialchars($po_string) ?>" readonly="readonly" style="width:100%;" />
+                                <input type="text" name="po_strings[]" value="<?php echo esc_attr(htmlspecialchars($po_string)) ?>" readonly="readonly" style="width:100%;" />
                               </td>
                               <td>
-                                <input type="text" name="po_translations[]" value="<?php echo htmlspecialchars($po_translation) ?>" style="width:100%;" />
+                                <input type="text" name="po_translations[]" value="<?php echo esc_attr(htmlspecialchars($po_translation)) ?>" style="width:100%;" />
                               </td>
                             </tr>
                           <?php
@@ -238,7 +251,7 @@ function generate_po_files($locale = false){
       $matches = array();
       
       // locale must be evident in filename to be detected!
-      if(preg_match("@-((.._)?..)\\.po$@", $file, &$matches)){
+      if(preg_match("@((.._)?..)\\.po$@", $file, &$matches)){
         $locales[] = $matches[1];
       }
     }
@@ -267,7 +280,7 @@ function generate_po_files($locale = false){
 function merge_po_content($po_rows, $rows){
   // update existing rows
   foreach($rows as $row){
-    $content_as_po = 'msgid "' . $row['string'] . '"' . PHP_EOL;
+    $content_as_po = 'msgid "' . addslashes($row['string']) . '"' . PHP_EOL;
     
     for($i = 0; $i < count($po_rows); $i++){
       if($po_rows[$i] == $content_as_po){
@@ -297,7 +310,7 @@ function merge_po_content($po_rows, $rows){
     $found = false;
     
     foreach($rows as $row){
-      $content_as_po = 'msgid "' . $row['string'] . '"' . PHP_EOL;
+      $content_as_po = 'msgid "' . addslashes($row['string']) . '"' . PHP_EOL;
       
       if($po_rows[$i] == $content_as_po){
         $found = true;
@@ -320,7 +333,7 @@ function merge_po_content($po_rows, $rows){
   
   // add new rows
   foreach($rows as $row){
-    $content_as_po = 'msgid "' . $row['string'] . '"' . PHP_EOL;
+    $content_as_po = 'msgid "' . addslashes($row['string']) . '"' . PHP_EOL;
     
     $found = false;
     
@@ -348,7 +361,7 @@ function scan_theme_files_store_results($string, $domain, $file, $line){
     $domain = "theme-localization";
   }
   
-  $rows[] = array("string" => $string, "domain" => $domain, "file" => $file, "line" => $line);
+  $rows[] = array("string" => stripslashes($string), "domain" => $domain, "file" => $file, "line" => $line);
   $domains[$domain] = $domain; // loopable and unique!
 }
 
@@ -413,7 +426,7 @@ function generate_po_entry($row){
   $po_entry[] = $string_positions[1];
   $po_entry[] = $string_positions[2];
   
-  $po_entry[] = 'msgid "' . $row['string'] . '"' . PHP_EOL;
+  $po_entry[] = 'msgid "' . addslashes($row['string']) . '"' . PHP_EOL;
   $po_entry[] = 'msgstr ""' . PHP_EOL;
   
   return $po_entry;

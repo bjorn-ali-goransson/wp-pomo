@@ -9,7 +9,7 @@ If you wanna see this as an independent plugin, please clone this repo; I have n
 
 To load your language files, try using the following code in your functions.php:
 
-`
+```
 function theme_init(){
   $lang_dir = dirname(__FILE__) . "/languages/";
 
@@ -36,4 +36,4 @@ function theme_init(){
 }
 
 add_action ('init', 'theme_init');
-`
+```

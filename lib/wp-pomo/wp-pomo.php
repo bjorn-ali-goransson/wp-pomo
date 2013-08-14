@@ -251,7 +251,7 @@ function generate_po_files($locale = false){
       $matches = array();
       
       // locale must be evident in filename to be detected!
-      if(preg_match("@((.._)?..)\\.po$@", $file, &$matches)){
+      if(preg_match("@((.._)?..)\\.po$@", $file, $matches)){
         $locales[] = $matches[1];
       }
     }

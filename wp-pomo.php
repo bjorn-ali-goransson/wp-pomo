@@ -148,10 +148,10 @@ add_action('admin_menu', function(){
                             continue;
                           }
                           
-                          $po_string = substr($po_file_rows[$i], strlen("msgid \""), strlen($po_file_rows[$i]) - strlen("msgid \"") - 3);
+                          $po_string = substr($po_file_rows[$i], strlen("msgid \""), strlen($po_file_rows[$i]) - strlen("msgid \"") - 2);
                           $po_string = stripslashes($po_string);
                           
-                          $po_translation = substr($po_file_rows[$i + 1], strlen("msgstr \""), strlen($po_file_rows[$i + 1]) - strlen("msgstr \"") - 3);
+                          $po_translation = substr($po_file_rows[$i + 1], strlen("msgstr \""), strlen($po_file_rows[$i + 1]) - strlen("msgstr \"") - 2);
                           $po_translation = stripslashes($po_translation);
                           
                           ?>

@@ -1,0 +1,10 @@
+{
+    "name": "bornemix/wp-pomo",
+    "description": "WP POMO",
+    "authors": [
+        {
+            "name": "Bjorn Ali Goransson",
+            "email": "bornemix@gmail.com"
+        }
+    ]
+}
